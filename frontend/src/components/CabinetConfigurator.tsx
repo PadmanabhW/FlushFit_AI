@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { CutListResponse, MaterialThickness } from '@/types/cabinet';
+import type { CutListResponse, ParseDesignResponse, MaterialThickness } from '@/types/cabinet';
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -270,6 +270,52 @@ export default function CabinetConfigurator() {
   const [error, setError] = useState<string | null>(null);
   const [showNotes, setShowNotes] = useState(false);
 
+  const [description, setDescription] = useState<string>('');
+  const [parsing, setParsing] = useState(false);
+
+  const handleParseDesign = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!description.trim()) return;
+    
+    setParsing(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      const res = await fetch('http://localhost:8000/api/parse-design', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          description,
+          material_thickness: parseFloat(thickness),
+        }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || `HTTP ${res.status}`);
+      }
+
+      const data: ParseDesignResponse = await res.json();
+      
+      // Update form fields with parsed specs
+      setWidth(data.parsed_specs.width.toString());
+      setHeight(data.parsed_specs.height.toString());
+      setDepth(data.parsed_specs.depth.toString());
+      
+      // Set the resulting cut-list to render the schematic
+      setResult(data.manufacturing_cut_list);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Unexpected error. Is the backend running?');
+      }
+    } finally {
+      setParsing(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -313,9 +359,49 @@ export default function CabinetConfigurator() {
         <div className="form-card__badge">Parametric Engine v1.0</div>
         <h2 className="form-card__title">Cabinet Configurator</h2>
         <p className="form-card__subtitle">
-          Enter your target dimensions to generate a precise frameless cabinet cut-list.
+          Enter your target dimensions or describe what you need to generate a precise frameless cabinet cut-list.
         </p>
 
+        {/* ── AI Input Form ── */}
+        <form onSubmit={handleParseDesign} className="form" noValidate id="ai-form" style={{ marginBottom: '1.5rem', paddingBottom: '1.5rem', borderBottom: '1px solid var(--border)' }}>
+          <div className="field">
+            <label className="field__label" htmlFor="input-description">
+              Describe your cabinet (AI)
+            </label>
+            <div className="field__input-wrap">
+              <textarea
+                id="input-description"
+                className="field__input field__input--textarea"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                required
+                rows={2}
+                placeholder="e.g., I need a 36 inch wide base cabinet, 30 tall and 21 deep"
+                style={{ resize: 'vertical', minHeight: '60px' }}
+              />
+            </div>
+          </div>
+          <button
+            id="btn-parse"
+            type="submit"
+            className={`btn-generate ${parsing ? 'btn-generate--loading' : ''}`}
+            disabled={parsing || !description.trim()}
+          >
+            {parsing ? (
+              <>
+                <span className="btn-generate__spinner" />
+                Parsing...
+              </>
+            ) : (
+              <>
+                <span className="btn-generate__icon">✨</span>
+                Generate from Description
+              </>
+            )}
+          </button>
+        </form>
+
+        {/* ── Manual Input Form ── */}
         <form onSubmit={handleSubmit} className="form" noValidate id="cabinet-form">
           <div className="form__grid">
             <div className="field">
