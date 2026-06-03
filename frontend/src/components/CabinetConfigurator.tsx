@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import type { CutListResponse, MaterialThickness } from '@/types/cabinet';
+import Image from 'next/image';
+import type { CutListResponse, CabinetVisualization, MaterialThickness } from '@/types/cabinet';
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -49,6 +50,54 @@ function SectionCard({
         <span className="section-card__count">{count}×</span>
       </div>
       <div className="section-card__panels">{children}</div>
+    </div>
+  );
+}
+
+function VisualizationPanel({ viz }: { viz: CabinetVisualization }) {
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [imgError, setImgError] = useState(false);
+
+  return (
+    <div className="viz-panel">
+      <div className="viz-panel__header">
+        <span className="viz-panel__title">Visual Reference</span>
+        <span className={`viz-panel__badge viz-panel__badge--${viz.source}`}>
+          {viz.source === 'stock' ? '📸 Stock Photo' : '✨ AI Generated'}
+        </span>
+      </div>
+
+      <div className="viz-panel__img-wrap">
+        {/* Skeleton shown while image loads */}
+        {!imgLoaded && !imgError && <div className="viz-panel__skeleton" />}
+
+        {imgError ? (
+          <div className="viz-panel__error">
+            <span>🖼</span>
+            <p>Preview unavailable</p>
+          </div>
+        ) : (
+          <Image
+            src={viz.url}
+            alt={viz.caption}
+            width={800}
+            height={480}
+            className={`viz-panel__img ${imgLoaded ? 'viz-panel__img--loaded' : ''}`}
+            onLoad={() => setImgLoaded(true)}
+            onError={() => setImgError(true)}
+            unoptimized
+          />
+        )}
+      </div>
+
+      <p className="viz-panel__caption">{viz.caption}</p>
+
+      {viz.source === 'stock' && (
+        <p className="viz-panel__ai-notice">
+          ⚡ Replace <code>get_cabinet_visualization()</code> in <code>backend/main.py</code> with
+          your preferred AI image API to generate photorealistic renders.
+        </p>
+      )}
     </div>
   );
 }
@@ -297,6 +346,9 @@ export default function CabinetConfigurator() {
             </div>
 
             <SummaryStrip data={result.summary} />
+
+            {/* Visualization panel — stock photo now, AI render later */}
+            <VisualizationPanel viz={result.visualization} />
 
             <div className="sections">
               <SectionCard title="Side Panels" count={result.side_panels.length} icon="🟫">

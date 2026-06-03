@@ -20,6 +20,12 @@ export interface DoorDimension {
   reveal_gap: number;
 }
 
+export interface CabinetVisualization {
+  url: string;
+  caption: string;
+  source: 'stock' | 'ai_generated';
+}
+
 export interface CutListResponse {
   input: CabinetInput;
   construction_notes: string[];
@@ -33,6 +39,7 @@ export interface CutListResponse {
     sheets_needed_4x8: number;
     door_reveal_gap_in: number;
   };
+  visualization: CabinetVisualization;
 }
 
 export type MaterialThickness = 0.5 | 0.75 | 1.0;
