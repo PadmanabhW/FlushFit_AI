@@ -6,9 +6,7 @@ Deterministic parametric math engine for frameless cabinet cut-list generation.
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
-from typing import Literal
 import math
-import random
 
 # ─── App Setup ───────────────────────────────────────────────────────────────
 
@@ -103,15 +101,6 @@ class DoorDimension(BaseModel):
     reveal_gap: float = Field(..., description="Reveal gap applied per side in inches")
 
 
-class CabinetVisualization(BaseModel):
-    """Visual reference for the generated cabinet design."""
-    url: str = Field(..., description="Image URL — stock photo now, AI-generated later")
-    caption: str = Field(..., description="Alt text / caption for the image")
-    source: Literal["stock", "ai_generated"] = Field(
-        ..., description="Origin of the image"
-    )
-
-
 class CutListResponse(BaseModel):
     """Fully structured cut-list for a frameless cabinet box."""
 
@@ -145,66 +134,12 @@ class CutListResponse(BaseModel):
         description="Quick stats about the cut-list",
     )
 
-    # Visual reference (stub — swap function body for real AI API later)
-    visualization: CabinetVisualization = Field(
-        ...,
-        description="Cabinet render or stock reference image",
-    )
-
 
 # ─── Parametric Math Engine ───────────────────────────────────────────────────
 
 DOOR_REVEAL_GAP: float = 0.0625   # 1/16 inch per side (full-overlay frameless)
 STRETCHER_HEIGHT: float = 3.0      # Standard nailer height in inches
 DOOR_GAP_CENTER: float = 0.125    # 1/8 inch gap between double doors
-
-
-# ─── Visualization Stub ──────────────────────────────────────────────────────
-# Replace this function body with a real AI image API call (Stable Diffusion,
-# DALL·E, Imagen, etc.) when you're ready to generate actual renders.
-# The signature and CabinetVisualization return type stay the same.
-
-# High-quality Unsplash stock photos of frameless/shaker blue cabinets
-_CABINET_STOCK_IMAGES: list[dict[str, str]] = [
-    {
-        "url": "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80",
-        "caption": "Modern frameless kitchen cabinet — shaker style, blue-grey finish",
-    },
-    {
-        "url": "https://images.unsplash.com/photo-1600585152220-90363fe7e115?w=800&q=80",
-        "caption": "Contemporary frameless cabinetry — European-style full-overlay doors",
-    },
-    {
-        "url": "https://images.unsplash.com/photo-1556909172-54557c7e4fb7?w=800&q=80",
-        "caption": "Frameless cabinet box — navy blue finish with integrated hardware",
-    },
-]
-
-
-def get_cabinet_visualization(inp: "CabinetInput") -> CabinetVisualization:
-    """
-    Visualization stub — returns a curated stock photo.
-
-    TODO: Replace body with an AI image API call, e.g.:
-        prompt = (
-            f"A photorealistic {inp.width}\"W × {inp.height}\"H × {inp.depth}\"D "
-            "frameless cabinet box, navy blue finish, professional studio lighting"
-        )
-        image_url = call_stable_diffusion(prompt)  # or DALL-E / Imagen
-        return CabinetVisualization(url=image_url, caption=prompt, source="ai_generated")
-    """
-    # Deterministically pick an image based on cabinet width bucket
-    # so the same dimensions always return the same stock photo.
-    index = int(inp.width) % len(_CABINET_STOCK_IMAGES)
-    stock = _CABINET_STOCK_IMAGES[index]
-    return CabinetVisualization(
-        url=stock["url"],
-        caption=(
-            f"{stock['caption']} — "
-            f"{inp.width}\"W × {inp.height}\"H × {inp.depth}\"D reference"
-        ),
-        source="stock",
-    )
 
 
 def _fmt(value: float) -> str:
@@ -345,9 +280,6 @@ def calculate_cut_list(inp: CabinetInput) -> CutListResponse:
         "door_reveal_gap_in": DOOR_REVEAL_GAP,
     }
 
-    # ── Visualization (stub) ──────────────────────────────────────────────
-    visualization = get_cabinet_visualization(inp)
-
     return CutListResponse(
         input=inp,
         construction_notes=notes,
@@ -356,7 +288,6 @@ def calculate_cut_list(inp: CabinetInput) -> CutListResponse:
         top_stretchers=top_stretchers,
         doors=doors,
         summary=summary,
-        visualization=visualization,
     )
 
 

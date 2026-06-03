@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
-import type { CutListResponse, CabinetVisualization, MaterialThickness } from '@/types/cabinet';
+import type { CutListResponse, MaterialThickness } from '@/types/cabinet';
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -54,50 +53,185 @@ function SectionCard({
   );
 }
 
-function VisualizationPanel({ viz }: { viz: CabinetVisualization }) {
-  const [imgLoaded, setImgLoaded] = useState(false);
-  const [imgError, setImgError] = useState(false);
+// ─── Cabinet SVG Schematic ────────────────────────────────────────────────────
+// Draws a proportionally accurate front-elevation of the cabinet box,
+// computed directly from the cut-list data. No external images needed.
+
+function CabinetSchematic({ result }: { result: CutListResponse }) {
+  const { input, side_panels, bottom_panel, doors } = result;
+
+  // SVG canvas dimensions
+  const SVG_W = 520;
+  const SVG_H = 320;
+  const PAD   = 48;   // padding for dimension annotations
+
+  // Scale cabinet to fit canvas (keeping aspect ratio)
+  const scaleX = (SVG_W - PAD * 2) / input.width;
+  const scaleY = (SVG_H - PAD * 2) / input.height;
+  const scale  = Math.min(scaleX, scaleY);
+
+  // Cabinet rect (front elevation)
+  const cabW = input.width  * scale;
+  const cabH = input.height * scale;
+  const originX = PAD + (SVG_W - PAD * 2 - cabW) / 2;
+  const originY = PAD + (SVG_H - PAD * 2 - cabH) / 2;
+
+  // Material thickness in scaled px
+  const t = input.material_thickness * scale;
+  const reveal = 0.0625 * scale;  // 1/16" reveal
+  const centerGap = 0.125 * scale; // 1/8" door gap
+
+  // Door geometry (each of 2 leaves)
+  const doorH  = doors[0].height * scale;
+  const doorW  = doors[0].width  * scale;
+  const doorY  = originY + reveal;  // top reveal
+  const door1X = originX + reveal;  // left reveal
+  const door2X = door1X + doorW + centerGap;
+
+  // Stretcher at top
+  const stretcherH = 3 * scale;  // 3" standard nailer
+
+  // Dim line helpers
+  const dimColor = '#c9956c';
+  const dimFaint = 'rgba(201,149,108,0.3)';
 
   return (
-    <div className="viz-panel">
-      <div className="viz-panel__header">
-        <span className="viz-panel__title">Visual Reference</span>
-        <span className={`viz-panel__badge viz-panel__badge--${viz.source}`}>
-          {viz.source === 'stock' ? '📸 Stock Photo' : '✨ AI Generated'}
-        </span>
+    <div className="schematic">
+      <div className="schematic__header">
+        <span className="schematic__title">Front Elevation — Schematic</span>
+        <span className="schematic__badge">Scale proportional</span>
       </div>
 
-      <div className="viz-panel__img-wrap">
-        {/* Skeleton shown while image loads */}
-        {!imgLoaded && !imgError && <div className="viz-panel__skeleton" />}
+      <svg
+        viewBox={`0 0 ${SVG_W} ${SVG_H}`}
+        className="schematic__svg"
+        aria-label={`Cabinet schematic: ${input.width}" wide × ${input.height}" tall`}
+      >
+        {/* ── Cabinet outer box ── */}
+        <rect
+          x={originX} y={originY} width={cabW} height={cabH}
+          fill="none" stroke="#e0b48f" strokeWidth="1.5"
+        />
 
-        {imgError ? (
-          <div className="viz-panel__error">
-            <span>🖼</span>
-            <p>Preview unavailable</p>
-          </div>
-        ) : (
-          <Image
-            src={viz.url}
-            alt={viz.caption}
-            width={800}
-            height={480}
-            className={`viz-panel__img ${imgLoaded ? 'viz-panel__img--loaded' : ''}`}
-            onLoad={() => setImgLoaded(true)}
-            onError={() => setImgError(true)}
-            unoptimized
-          />
-        )}
-      </div>
+        {/* ── Side panels (left & right) — filled ── */}
+        <rect x={originX}            y={originY} width={t} height={cabH}
+          fill="rgba(201,149,108,0.18)" stroke="#c9956c" strokeWidth="1" />
+        <rect x={originX + cabW - t} y={originY} width={t} height={cabH}
+          fill="rgba(201,149,108,0.18)" stroke="#c9956c" strokeWidth="1" />
 
-      <p className="viz-panel__caption">{viz.caption}</p>
+        {/* ── Bottom panel ── */}
+        <rect x={originX + t} y={originY + cabH - t} width={cabW - t * 2} height={t}
+          fill="rgba(201,149,108,0.14)" stroke="#c9956c" strokeWidth="1" />
 
-      {viz.source === 'stock' && (
-        <p className="viz-panel__ai-notice">
-          ⚡ Replace <code>get_cabinet_visualization()</code> in <code>backend/main.py</code> with
-          your preferred AI image API to generate photorealistic renders.
-        </p>
-      )}
+        {/* ── Top stretchers ── */}
+        <rect x={originX + t} y={originY} width={cabW - t * 2} height={stretcherH}
+          fill="rgba(201,149,108,0.1)" stroke="rgba(201,149,108,0.5)" strokeWidth="1"
+          strokeDasharray="4 2"
+        />
+
+        {/* ── Door opening background ── */}
+        <rect
+          x={originX + t} y={originY + stretcherH}
+          width={cabW - t * 2} height={cabH - t - stretcherH}
+          fill="rgba(8,13,26,0.6)"
+        />
+
+        {/* ── Door 1 (left leaf) ── */}
+        <rect
+          x={door1X} y={doorY} width={doorW} height={doorH}
+          fill="rgba(15,26,46,0.9)" stroke="#e0b48f" strokeWidth="1.2"
+          rx="1"
+        />
+        {/* Door 1 handle */}
+        <line
+          x1={door1X + doorW - 6} y1={doorY + doorH * 0.42}
+          x2={door1X + doorW - 6} y2={doorY + doorH * 0.58}
+          stroke="#c9956c" strokeWidth="2" strokeLinecap="round"
+        />
+
+        {/* ── Door 2 (right leaf) ── */}
+        <rect
+          x={door2X} y={doorY} width={doorW} height={doorH}
+          fill="rgba(15,26,46,0.9)" stroke="#e0b48f" strokeWidth="1.2"
+          rx="1"
+        />
+        {/* Door 2 handle */}
+        <line
+          x1={door2X + 6} y1={doorY + doorH * 0.42}
+          x2={door2X + 6} y2={doorY + doorH * 0.58}
+          stroke="#c9956c" strokeWidth="2" strokeLinecap="round"
+        />
+
+        {/* ── Center gap indicator ── */}
+        <line
+          x1={door1X + doorW + centerGap / 2} y1={doorY + 8}
+          x2={door1X + doorW + centerGap / 2} y2={doorY + doorH - 8}
+          stroke={dimFaint} strokeWidth="1" strokeDasharray="2 2"
+        />
+
+        {/* ── WIDTH dimension (bottom) ── */}
+        <line x1={originX} y1={originY + cabH + 18}
+              x2={originX + cabW} y2={originY + cabH + 18}
+              stroke={dimColor} strokeWidth="1" />
+        <line x1={originX}        y1={originY + cabH + 13} x2={originX}        y2={originY + cabH + 23} stroke={dimColor} strokeWidth="1" />
+        <line x1={originX + cabW} y1={originY + cabH + 13} x2={originX + cabW} y2={originY + cabH + 23} stroke={dimColor} strokeWidth="1" />
+        <text x={originX + cabW / 2} y={originY + cabH + 34}
+          textAnchor="middle" fill={dimColor} fontSize="10" fontFamily="Space Grotesk, sans-serif" fontWeight="600">
+          {input.width}&quot;
+        </text>
+
+        {/* ── HEIGHT dimension (right side) ── */}
+        <line x1={originX + cabW + 18} y1={originY}
+              x2={originX + cabW + 18} y2={originY + cabH}
+              stroke={dimColor} strokeWidth="1" />
+        <line x1={originX + cabW + 13} y1={originY}        x2={originX + cabW + 23} y2={originY}        stroke={dimColor} strokeWidth="1" />
+        <line x1={originX + cabW + 13} y1={originY + cabH} x2={originX + cabW + 23} y2={originY + cabH} stroke={dimColor} strokeWidth="1" />
+        <text
+          x={originX + cabW + 32} y={originY + cabH / 2}
+          textAnchor="middle" fill={dimColor} fontSize="10" fontFamily="Space Grotesk, sans-serif" fontWeight="600"
+          transform={`rotate(90, ${originX + cabW + 32}, ${originY + cabH / 2})`}
+        >
+          {input.height}&quot;
+        </text>
+
+        {/* ── Labels ── */}
+        <text x={originX + t / 2} y={originY + cabH / 2}
+          textAnchor="middle" fill="rgba(201,149,108,0.7)" fontSize="7"
+          transform={`rotate(-90, ${originX + t / 2}, ${originY + cabH / 2})`}
+        >SIDE</text>
+
+        <text x={originX + cabW - t / 2} y={originY + cabH / 2}
+          textAnchor="middle" fill="rgba(201,149,108,0.7)" fontSize="7"
+          transform={`rotate(90, ${originX + cabW - t / 2}, ${originY + cabH / 2})`}
+        >SIDE</text>
+
+        <text x={originX + cabW / 2} y={originY + stretcherH / 2 + 3}
+          textAnchor="middle" fill="rgba(201,149,108,0.55)" fontSize="7"
+        >STRETCHERS</text>
+
+        <text x={originX + cabW / 2} y={originY + cabH - t / 2 + 3}
+          textAnchor="middle" fill="rgba(201,149,108,0.55)" fontSize="7"
+        >BOTTOM</text>
+
+        <text x={door1X + doorW / 2} y={doorY + doorH / 2}
+          textAnchor="middle" fill="rgba(224,180,143,0.6)" fontSize="8" fontFamily="Space Grotesk, sans-serif"
+        >DOOR</text>
+        <text x={door2X + doorW / 2} y={doorY + doorH / 2}
+          textAnchor="middle" fill="rgba(224,180,143,0.6)" fontSize="8" fontFamily="Space Grotesk, sans-serif"
+        >DOOR</text>
+
+        {/* ── Bottom panel dimension note ── */}
+        <text x={originX + cabW / 2} y={originY - 10}
+          textAnchor="middle" fill="rgba(138,155,192,0.7)" fontSize="8.5" fontFamily="Inter, sans-serif"
+        >
+          Bottom: {bottom_panel.label} · Side: {side_panels[0].label}
+        </text>
+      </svg>
+
+      <p className="schematic__note">
+        Front elevation · Frameless (European-style) full-overlay construction ·
+        {' '}{input.material_thickness}&quot; material · 1/16&quot; reveal per edge
+      </p>
     </div>
   );
 }
@@ -347,8 +481,8 @@ export default function CabinetConfigurator() {
 
             <SummaryStrip data={result.summary} />
 
-            {/* Visualization panel — stock photo now, AI render later */}
-            <VisualizationPanel viz={result.visualization} />
+            {/* Cabinet schematic — front elevation SVG, drawn from cut-list data */}
+            <CabinetSchematic result={result} />
 
             <div className="sections">
               <SectionCard title="Side Panels" count={result.side_panels.length} icon="🟫">
