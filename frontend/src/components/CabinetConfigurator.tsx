@@ -293,7 +293,13 @@ export default function CabinetConfigurator() {
 
       if (!res.ok) {
         const errData = await res.json();
-        throw new Error(errData.detail || `HTTP ${res.status}`);
+        const detail = errData.detail;
+        const msg = typeof detail === 'string'
+          ? detail
+          : Array.isArray(detail)
+            ? detail.map((d: { msg?: string }) => d.msg ?? JSON.stringify(d)).join('; ')
+            : `HTTP ${res.status}`;
+        throw new Error(msg);
       }
 
       const data: ParseDesignResponse = await res.json();
@@ -336,7 +342,13 @@ export default function CabinetConfigurator() {
 
       if (!res.ok) {
         const errData = await res.json();
-        throw new Error(errData.detail || `HTTP ${res.status}`);
+        const detail = errData.detail;
+        const msg = typeof detail === 'string'
+          ? detail
+          : Array.isArray(detail)
+            ? detail.map((d: { msg?: string }) => d.msg ?? JSON.stringify(d)).join('; ')
+            : `HTTP ${res.status}`;
+        throw new Error(msg);
       }
 
       const data: CutListResponse = await res.json();

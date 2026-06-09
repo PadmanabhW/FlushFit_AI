@@ -33,3 +33,6 @@ out/
 .coverage
 htmlcov/
 .pytest_cache/
+
+# Runtime data
+backend/orders.json

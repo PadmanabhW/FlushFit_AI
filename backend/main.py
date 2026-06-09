@@ -1,11 +1,15 @@
 """
-Parametrix AI — FastAPI Backend
+FlushFit AI — FastAPI Backend
 Deterministic parametric math engine for frameless cabinet cut-list generation.
 """
 
 import json
 import math
 import os
+import uuid
+from datetime import datetime
+from enum import Enum
+from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
@@ -19,15 +23,18 @@ load_dotenv()
 # ─── App Setup ───────────────────────────────────────────────────────────────
 
 app = FastAPI(
-    title="Parametrix AI",
+    title="FlushFit AI",
     description="Parametric cabinet cut-list generator API",
     version="1.0.0",
 )
 
+_allowed_origins = os.getenv("ALLOWED_ORIGINS", "").split(",")
+_cors_origins = [o.strip() for o in _allowed_origins if o.strip()] or ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
-    allow_credentials=True,
+    allow_origins=_cors_origins,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -450,7 +457,7 @@ def calculate_cut_list(inp: CabinetInput) -> CutListResponse:
 @app.get("/", tags=["Health"])
 async def root():
     """Health check endpoint."""
-    return {"status": "ok", "service": "Parametrix AI", "version": "1.0.0"}
+    return {"status": "ok", "service": "FlushFit AI", "version": "1.0.0"}
 
 
 @app.post(
@@ -519,7 +526,7 @@ async def parse_design(payload: ParseDesignRequest) -> ParseDesignResponse:
 
     try:
         chat = groq.chat.completions.create(
-            model="llama3-8b-8192",
+            model="llama-3.1-8b-instant",
             messages=[
                 {"role": "system", "content": _GROQ_SYSTEM_PROMPT},
                 {"role": "user",   "content": payload.description},
@@ -578,3 +585,374 @@ async def parse_design(payload: ParseDesignRequest) -> ParseDesignResponse:
         parsed_specs=parsed_specs,
         manufacturing_cut_list=cut_list_dict,
     )
+
+
+# ─── Models: /api/generate-visualization ──────────────────────────────────────
+
+class DoorStyle(str, Enum):
+    flat_slab = "flat_slab"
+    shaker = "shaker"
+    vgroove = "vgroove"
+    glass_front = "glass_front"
+
+
+class CabinetFinish(str, Enum):
+    white = "white"
+    navy = "navy"
+    gray = "gray"
+    black = "black"
+    natural_wood = "natural_wood"
+
+
+class HardwareFinish(str, Enum):
+    brushed_gold = "brushed_gold"
+    matte_black = "matte_black"
+    chrome = "chrome"
+
+
+class VisualizationRequest(BaseModel):
+    width: float = Field(..., gt=0, description="Cabinet exterior width in inches")
+    height: float = Field(..., gt=0, description="Cabinet exterior height in inches")
+    depth: float = Field(..., gt=0, description="Cabinet exterior depth in inches")
+    door_style: DoorStyle
+    finish: CabinetFinish
+    hardware: HardwareFinish
+
+
+class VisualizationResponse(BaseModel):
+    image_url: str
+    prompt_used: str
+
+
+# ─── Prompt Builders ───────────────────────────────────────────────────────────
+
+_DOOR_STYLE_PROMPTS: dict[str, str] = {
+    "flat_slab": "flat panel slab doors, ultra-minimalist modern style, no frame detail",
+    "shaker": "shaker style doors with recessed center panel and clean frame rails, classic craftsman",
+    "vgroove": "V-groove chevron panel doors with diagonal routed wood detail",
+    "glass_front": "glass panel insert cabinet doors with thin solid wood frame",
+}
+
+_FINISH_PROMPTS: dict[str, str] = {
+    "white": "crisp bright white painted finish",
+    "navy": "deep navy blue painted finish",
+    "gray": "warm medium gray painted finish",
+    "black": "matte charcoal black painted finish",
+    "natural_wood": "natural oak wood grain, warm honey tones, clear coat finish",
+}
+
+_HARDWARE_PROMPTS: dict[str, str] = {
+    "brushed_gold": "brushed brass gold bar pull handles",
+    "matte_black": "matte black bar pull handles",
+    "chrome": "polished chrome cup pull hardware",
+}
+
+
+def _build_viz_prompt(req: VisualizationRequest) -> str:
+    door = _DOOR_STYLE_PROMPTS[req.door_style]
+    finish = _FINISH_PROMPTS[req.finish]
+    hw = _HARDWARE_PROMPTS[req.hardware]
+    return (
+        f"Professional product photograph of a single frameless kitchen base cabinet, "
+        f"{door}, {finish}, {hw}, "
+        f"approximately {req.width:.0f} inches wide by {req.height:.0f} inches tall, "
+        f"straight-on front elevation view, centered, studio lighting, pure white background, "
+        f"photorealistic, commercial product photography, 8k, sharp focus, no shadows"
+    )
+
+
+# ─── Route: /api/generate-visualization ───────────────────────────────────────
+
+@app.post(
+    "/api/generate-visualization",
+    response_model=VisualizationResponse,
+    tags=["AI Visualizer"],
+    summary="Generate an AI cabinet visualization via Pollinations.ai (FLUX, free)",
+)
+async def generate_visualization(payload: VisualizationRequest) -> VisualizationResponse:
+    from urllib.parse import quote
+
+    prompt = _build_viz_prompt(payload)
+    # Deterministic seed so the same config always produces the same image
+    seed = abs(hash(f"{payload.door_style}{payload.finish}{payload.hardware}")) % 999983
+    image_url = (
+        f"https://image.pollinations.ai/prompt/{quote(prompt)}"
+        f"?width=768&height=960&nologo=true&model=flux&seed={seed}"
+    )
+    return VisualizationResponse(image_url=image_url, prompt_used=prompt)
+
+
+# ─── Phase 2: Room Fitting Engine ─────────────────────────────────────────────
+
+# Standard dimensions per cabinet type (inches)
+_CABINET_STANDARDS: dict[str, dict] = {
+    "base": {"height": 34.5, "depth": 24.0, "min_w": 9.0,  "max_w": 48.0, "target_w": 30.0},
+    "wall": {"height": 30.0, "depth": 12.0, "min_w": 9.0,  "max_w": 36.0, "target_w": 24.0},
+    "tall": {"height": 84.0, "depth": 24.0, "min_w": 18.0, "max_w": 36.0, "target_w": 24.0},
+}
+
+
+class CabinetType(str, Enum):
+    base = "base"
+    wall = "wall"
+    tall = "tall"
+
+
+class ObstacleType(str, Enum):
+    door    = "door"
+    window  = "window"
+    utility = "utility"
+
+
+class WallObstacle(BaseModel):
+    position_x: float = Field(..., ge=0, description="Distance from left wall edge in inches")
+    width: float = Field(..., gt=0, description="Obstacle width in inches")
+    type: ObstacleType = ObstacleType.door
+
+    @field_validator("width")
+    @classmethod
+    def width_positive(cls, v: float) -> float:
+        return round(v, 4)
+
+
+class RoomPlanRequest(BaseModel):
+    wall_width: float = Field(..., gt=0, le=600, description="Total wall width in inches", examples=[143.5])
+    ceiling_height: float = Field(default=96.0, gt=0, le=240)
+    cabinet_type: CabinetType = Field(default=CabinetType.base)
+    material_thickness: float = Field(default=0.75)
+    obstacles: list[WallObstacle] = Field(default_factory=list)
+
+    @field_validator("material_thickness")
+    @classmethod
+    def validate_thickness(cls, v: float) -> float:
+        allowed = {0.5, 0.75, 1.0}
+        if round(v, 4) not in allowed:
+            raise ValueError(f"material_thickness must be one of {sorted(allowed)}")
+        return round(v, 4)
+
+
+def _optimal_cabinet_count(segment_width: float, std: dict) -> tuple[int, float]:
+    """Return (count, per-cabinet-width) that best fills segment_width with no filler."""
+    min_w, max_w, target_w = std["min_w"], std["max_w"], std["target_w"]
+    best: tuple[int, float, float] | None = None
+    for n in range(1, max(1, int(segment_width / min_w)) + 2):
+        w = segment_width / n
+        if min_w <= w <= max_w:
+            score = abs(w - target_w)
+            if best is None or score < best[2]:
+                best = (n, w, score)
+    if best is None:
+        n = max(1, round(segment_width / target_w))
+        best = (n, segment_width / n, 0.0)
+    return best[0], round(best[1], 4)
+
+
+def _free_segments(wall_width: float, obstacles: list[WallObstacle]) -> list[tuple[float, float]]:
+    """Subtract merged obstacle footprints from the wall; return free (start, end) pairs."""
+    # Clip to wall bounds and sort
+    spans = sorted(
+        (max(0.0, o.position_x), min(wall_width, o.position_x + o.width))
+        for o in obstacles
+        if o.position_x < wall_width
+    )
+    # Merge overlapping spans
+    merged: list[list[float]] = []
+    for start, end in spans:
+        if merged and start <= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], end)
+        else:
+            merged.append([start, end])
+    # Gaps between merged spans = free segments
+    segments: list[tuple[float, float]] = []
+    cursor = 0.0
+    for obs_start, obs_end in merged:
+        if obs_start > cursor:
+            segments.append((cursor, obs_start))
+        cursor = obs_end
+    if cursor < wall_width:
+        segments.append((cursor, wall_width))
+    return segments
+
+
+@app.post("/api/plan-room", tags=["Room Planner"],
+          summary="Fit cabinets into a wall, routing around doors/windows/obstacles")
+async def plan_room(payload: RoomPlanRequest) -> dict:
+    std = _CABINET_STANDARDS[payload.cabinet_type]
+    H, D, t = std["height"], std["depth"], payload.material_thickness
+    min_w = std["min_w"]
+
+    segments = _free_segments(payload.wall_width, payload.obstacles) if payload.obstacles \
+               else [(0.0, payload.wall_width)]
+
+    cabinets: list[dict] = []
+    total_area = 0.0
+    skipped: list[str] = []
+    cabinet_index = 1
+
+    for seg_start, seg_end in segments:
+        seg_w = round(seg_end - seg_start, 4)
+        if seg_w < min_w:
+            skipped.append(f"{_fmt(seg_w)} segment at {_fmt(seg_start)} — too narrow for any cabinet")
+            continue
+        num, cab_w = _optimal_cabinet_count(seg_w, std)
+        x = seg_start
+        for _ in range(num):
+            cuts = calculate_cabinet_cuts(cab_w, H, D, thickness=t)
+            total_area += cuts["summary"]["sheet_area_sq_ft"]
+            cabinets.append({
+                "index": cabinet_index,
+                "position_x": round(x, 4),
+                "width": cab_w,
+                "height": H,
+                "depth": D,
+                "segment_start": seg_start,
+                "cut_list": cuts,
+            })
+            x = round(x + cab_w, 4)
+            cabinet_index += 1
+
+    total_cabs = len(cabinets)
+    unique_widths = sorted({c["width"] for c in cabinets})
+
+    # Build human-readable notes
+    if payload.obstacles:
+        obs_desc = ", ".join(f"{o.type} at {_fmt(o.position_x)} ({_fmt(o.width)} wide)" for o in payload.obstacles)
+        notes = [
+            f"{total_cabs} cabinet{'s' if total_cabs != 1 else ''} across {len(segments)} segment{'s' if len(segments) != 1 else ''} — routing around {obs_desc}",
+            "No filler pieces — each segment filled with equal-width custom cabinets",
+        ]
+    else:
+        notes = [
+            f"{total_cabs} equal cabinet{'s' if total_cabs != 1 else ''} × {_fmt(unique_widths[0])} fill {_fmt(payload.wall_width)} perfectly",
+            "No filler pieces — custom widths eliminate gaps entirely",
+        ]
+
+    notes += [
+        f"Type: {payload.cabinet_type} | {_fmt(H)} H × {_fmt(D)} D",
+        f"Material: {_fmt(t)} sheet goods",
+    ]
+    if skipped:
+        notes += [f"⚠ Skipped: {s}" for s in skipped]
+
+    return {
+        "wall_width": payload.wall_width,
+        "ceiling_height": payload.ceiling_height,
+        "cabinet_type": payload.cabinet_type,
+        "num_cabinets": total_cabs,
+        "cabinet_height": H,
+        "cabinet_depth": D,
+        "cabinets": cabinets,
+        "obstacles": [o.model_dump() for o in payload.obstacles],
+        "notes": notes,
+        "total_sheet_area_sq_ft": round(total_area, 2),
+        "sheets_needed_4x8": math.ceil(total_area / 32) if total_area > 0 else 0,
+    }
+
+
+# ─── Phase 3: Quote + Order Flow ──────────────────────────────────────────────
+
+# Pricing constants (builder can adjust these)
+_PRICE_PER_SHEET:  float = 85.0    # 4×8 plywood sheet
+_LABOR_PER_CAB:    float = 120.0   # per cabinet box (frameless assembly)
+_RETAIL_MARKUP:    float = 2.5     # cost → retail multiplier
+
+_ORDERS_FILE = Path(__file__).parent / "orders.json"
+
+
+def _load_orders() -> list:
+    if not _ORDERS_FILE.exists():
+        return []
+    try:
+        return json.loads(_ORDERS_FILE.read_text())
+    except (json.JSONDecodeError, OSError):
+        return []
+
+
+def _save_orders(orders: list) -> None:
+    _ORDERS_FILE.write_text(json.dumps(orders, indent=2))
+
+
+def _build_quote(num_cabinets: int, sheets_needed: int) -> dict:
+    material = round(sheets_needed * _PRICE_PER_SHEET, 2)
+    labor    = round(num_cabinets  * _LABOR_PER_CAB,   2)
+    retail   = round((material + labor) * _RETAIL_MARKUP, 2)
+    return {
+        "material_cost":     material,
+        "labor_cost":        labor,
+        "total_build_cost":  round(material + labor, 2),
+        "retail_price":      retail,
+        "price_per_cabinet": round(retail / num_cabinets, 2) if num_cabinets else 0,
+        "deposit_50pct":     round(retail * 0.5, 2),
+    }
+
+
+# ─── Models: Orders ────────────────────────────────────────────────────────────
+
+class OrderCustomer(BaseModel):
+    name:  str = Field(..., min_length=2,  max_length=100)
+    phone: str = Field(..., min_length=7,  max_length=30)
+    email: str = Field(..., min_length=5,  max_length=120)
+    notes: str = Field(default="", max_length=500)
+
+
+class OrderDesign(BaseModel):
+    wall_width:              float
+    cabinet_type:            str
+    door_style:              str
+    finish:                  str
+    hardware:                str
+    num_cabinets:            int
+    cabinet_height:          float
+    cabinet_depth:           float
+    total_sheet_area_sq_ft:  float
+    sheets_needed_4x8:       int
+
+
+class SubmitOrderRequest(BaseModel):
+    customer: OrderCustomer
+    design:   OrderDesign
+
+
+# ─── Routes: Orders ────────────────────────────────────────────────────────────
+
+@app.post("/api/submit-order", tags=["Orders"],
+          summary="Submit a cabinet order — saves customer info + design + quote")
+async def submit_order(payload: SubmitOrderRequest) -> dict:
+    order_id = f"ORD-{uuid.uuid4().hex[:6].upper()}"
+    quote    = _build_quote(payload.design.num_cabinets, payload.design.sheets_needed_4x8)
+
+    order = {
+        "order_id":     order_id,
+        "submitted_at": datetime.now().isoformat(timespec="seconds"),
+        "status":       "pending",
+        "customer":     payload.customer.model_dump(),
+        "design":       payload.design.model_dump(),
+        "quote":        quote,
+    }
+
+    orders = _load_orders()
+    orders.append(order)
+    _save_orders(orders)
+
+    return {"order_id": order_id, "status": "pending", "quote": quote}
+
+
+@app.get("/api/orders", tags=["Orders"],
+         summary="List all submitted orders — builder admin view")
+async def get_orders() -> list:
+    return _load_orders()
+
+
+@app.patch("/api/orders/{order_id}/status", tags=["Orders"],
+           summary="Update order status (pending → confirmed → completed)")
+async def update_order_status(order_id: str, status: str) -> dict:
+    allowed = {"pending", "confirmed", "in_progress", "completed", "cancelled"}
+    if status not in allowed:
+        raise HTTPException(400, detail=f"status must be one of {sorted(allowed)}")
+    orders = _load_orders()
+    for o in orders:
+        if o["order_id"] == order_id:
+            o["status"] = status
+            _save_orders(orders)
+            return {"order_id": order_id, "status": status}
+    raise HTTPException(404, detail=f"Order {order_id} not found")

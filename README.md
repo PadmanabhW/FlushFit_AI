@@ -1,4 +1,4 @@
-# Parametrix AI — Cabinet Cut-List Generator
+# FlushFit AI — Cabinet Cut-List Generator
 
 A parametric cabinet design tool that calculates precise cut dimensions for frameless cabinet boxes.
 

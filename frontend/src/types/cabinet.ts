@@ -1,4 +1,4 @@
-// Types for Parametrix AI API
+// Types for FlushFit AI API
 
 export interface CabinetInput {
   width: number;
