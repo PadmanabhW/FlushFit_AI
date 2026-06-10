@@ -724,10 +724,6 @@ export default function FlushFitDashboard() {
             ))}
           </div>
         </div>
-        <div className="flex items-center gap-1.5 text-xs text-slate-500">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-          API ready
-        </div>
       </header>
 
       {/* ── Body ───────────────────────────────────────────────────────────── */}
