@@ -6,8 +6,8 @@ const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type DoorStyle = 'flat_slab' | 'shaker' | 'vgroove' | 'glass_front';
-type CabinetFinish = 'white' | 'navy' | 'gray' | 'black' | 'natural_wood';
+type DoorStyle = 'wilmington' | 'laguna';
+type CabinetFinish = 'white' | 'gray' | 'natural_wood';
 type HardwareFinish = 'brushed_gold' | 'matte_black' | 'chrome';
 
 interface ParsedSpecs {
@@ -41,19 +41,15 @@ interface DesignResult {
 
 // ─── Static Config ────────────────────────────────────────────────────────────
 
-const DOOR_STYLES: { id: DoorStyle; name: string; desc: string }[] = [
-  { id: 'flat_slab', name: 'Flat Slab', desc: 'Modern' },
-  { id: 'shaker', name: 'Shaker', desc: 'Classic' },
-  { id: 'vgroove', name: 'V-Groove', desc: 'Chevron' },
-  { id: 'glass_front', name: 'Glass', desc: 'Open' },
+const DOOR_STYLES: { id: DoorStyle; name: string; desc: string; price: string }[] = [
+  { id: 'wilmington', name: 'Wilmington', desc: 'Classic inset panel', price: '$27.96/sq ft' },
+  { id: 'laguna',     name: 'Laguna',     desc: 'Modern flat panel',   price: '$35.81/sq ft' },
 ];
 
 const FINISHES: { id: CabinetFinish; name: string; hex: string; light?: boolean }[] = [
-  { id: 'white', name: 'White', hex: '#EDE8E3', light: true },
-  { id: 'navy', name: 'Navy', hex: '#1E3A5F' },
-  { id: 'gray', name: 'Slate', hex: '#7A8B9A' },
-  { id: 'black', name: 'Black', hex: '#1C1C1E' },
-  { id: 'natural_wood', name: 'Oak', hex: '#C49A6C' },
+  { id: 'white',        name: 'White',        hex: '#EDE8E3', light: true },
+  { id: 'gray',         name: 'Grey',         hex: '#8A9BB0' },
+  { id: 'natural_wood', name: 'Natural Wood', hex: '#C49A6C' },
 ];
 
 const HARDWARE: { id: HardwareFinish; name: string; hex: string; border?: boolean }[] = [
@@ -65,10 +61,8 @@ const HARDWARE: { id: HardwareFinish; name: string; hex: string; border?: boolea
 // ─── Cabinet SVG Preview ─────────────────────────────────────────────────────
 
 const FINISH_COLORS: Record<CabinetFinish, { fill: string; inner: string; edge: string; toeKick: string }> = {
-  white:        { fill: '#EDE8E3', inner: '#DDD8D0', edge: '#C5BFB7', toeKick: '#CDCAC6' },
-  navy:         { fill: '#1E3A5F', inner: '#162C4A', edge: '#0F1F35', toeKick: '#111E2D' },
-  gray:         { fill: '#7A8B9A', inner: '#697886', edge: '#4D5A66', toeKick: '#505E6A' },
-  black:        { fill: '#2D2D2D', inner: '#222222', edge: '#141414', toeKick: '#1A1A1A' },
+  white:        { fill: '#EDE8E3', inner: '#D8D2C9', edge: '#BFB9B1', toeKick: '#CDCAC6' },
+  gray:         { fill: '#8A9BB0', inner: '#7A8A9E', edge: '#5E6E82', toeKick: '#505E6A' },
   natural_wood: { fill: '#C49A6C', inner: '#B28658', edge: '#9A7044', toeKick: '#8A6038' },
 };
 
@@ -115,32 +109,19 @@ function CabinetSVGPreview({
   const renderDoorFace = (x: number, y: number, w: number, h: number) => {
     const im = Math.min(w, h) * 0.09;
     switch (doorStyle) {
-      case 'flat_slab':
-        return <rect x={x} y={y} width={w} height={h} fill={fc.fill} />;
-      case 'shaker':
+      case 'wilmington':
         return (
           <g>
             <rect x={x} y={y} width={w} height={h} fill={fc.fill} />
-            <rect x={x+im} y={y+im} width={w-im*2} height={h-im*2}
-                  fill={fc.inner} stroke={fc.edge} strokeWidth="1" rx="1" />
+            <rect x={x+im} y={y+im} width={w-im*2} height={h-im*2} fill={fc.inner} stroke={fc.edge} strokeWidth="1" rx="1" />
+            <rect x={x+im+2} y={y+im+2} width={w-im*2-4} height={h-im*2-4} fill="none" stroke={fc.edge} strokeWidth="0.5" opacity="0.4" rx="0.5" />
           </g>
         );
-      case 'vgroove':
+      case 'laguna':
         return (
           <g>
             <rect x={x} y={y} width={w} height={h} fill={fc.fill} />
-            <line x1={x+im} y1={y+im} x2={x+w-im} y2={y+h-im} stroke={fc.edge} strokeWidth="1.2" />
-            <line x1={x+w-im} y1={y+im} x2={x+im} y2={y+h-im} stroke={fc.edge} strokeWidth="1.2" />
-          </g>
-        );
-      case 'glass_front':
-        return (
-          <g>
-            <rect x={x} y={y} width={w} height={h} fill={fc.fill} />
-            <rect x={x+im} y={y+im} width={w-im*2} height={h-im*2}
-                  fill="#8BAFC8" fillOpacity="0.28" stroke={fc.edge} strokeWidth="1" rx="1" />
-            <line x1={x+im} y1={y+im} x2={x+w-im} y2={y+h-im} stroke={fc.edge} strokeWidth="0.5" opacity="0.4" />
-            <line x1={x+w-im} y1={y+im} x2={x+im} y2={y+h-im} stroke={fc.edge} strokeWidth="0.5" opacity="0.4" />
+            <rect x={x+im*0.7} y={y+im*0.7} width={w-im*1.4} height={h-im*1.4} fill={fc.inner} stroke={fc.edge} strokeWidth="0.8" rx="0.5" />
           </g>
         );
     }
@@ -200,34 +181,21 @@ function DoorIcon({ style, selected }: { style: DoorStyle; selected: boolean }) 
   const panel = selected ? '#312e81' : '#1f2937';
 
   switch (style) {
-    case 'flat_slab':
-      return (
-        <svg viewBox="0 0 40 52" className="w-8 h-10" fill="none">
-          <rect x="1" y="1" width="38" height="50" rx="2" fill={bg} stroke={stroke} strokeWidth="1.5" />
-        </svg>
-      );
-    case 'shaker':
+    case 'wilmington':
+      // Classic inset panel — 3" stiles/rails with visible shadow depth
       return (
         <svg viewBox="0 0 40 52" className="w-8 h-10" fill="none">
           <rect x="1" y="1" width="38" height="50" rx="2" fill={bg} stroke={stroke} strokeWidth="1.5" />
           <rect x="7" y="7" width="26" height="38" rx="1" fill={panel} stroke={stroke} strokeWidth="1" />
+          <rect x="9" y="9" width="22" height="34" rx="0.5" fill="none" stroke={stroke} strokeWidth="0.5" opacity="0.5" />
         </svg>
       );
-    case 'vgroove':
+    case 'laguna':
+      // Modern flat inset panel — 2.5" stiles/rails, cleaner look
       return (
         <svg viewBox="0 0 40 52" className="w-8 h-10" fill="none">
           <rect x="1" y="1" width="38" height="50" rx="2" fill={bg} stroke={stroke} strokeWidth="1.5" />
-          <line x1="7" y1="7" x2="33" y2="45" stroke={stroke} strokeWidth="1.2" />
-          <line x1="33" y1="7" x2="7" y2="45" stroke={stroke} strokeWidth="1.2" />
-        </svg>
-      );
-    case 'glass_front':
-      return (
-        <svg viewBox="0 0 40 52" className="w-8 h-10" fill="none">
-          <rect x="1" y="1" width="38" height="50" rx="2" fill={bg} stroke={stroke} strokeWidth="1.5" />
-          <rect x="7" y="7" width="26" height="38" rx="1" fill="#0c1120" fillOpacity="0.8" stroke={stroke} strokeWidth="1" />
-          <line x1="20" y1="7" x2="20" y2="45" stroke={stroke} strokeWidth="0.8" strokeDasharray="2.5,2" />
-          <line x1="7" y1="26" x2="33" y2="26" stroke={stroke} strokeWidth="0.8" strokeDasharray="2.5,2" />
+          <rect x="6" y="6" width="28" height="40" rx="1" fill={panel} stroke={stroke} strokeWidth="0.8" />
         </svg>
       );
   }
@@ -247,10 +215,10 @@ function extractApiError(errData: unknown, status: number): string {
 }
 
 const FINISH_LABELS: Record<CabinetFinish, string> = {
-  white: 'White', navy: 'Navy', gray: 'Slate Gray', black: 'Matte Black', natural_wood: 'Natural Oak',
+  white: 'White', gray: 'Grey', natural_wood: 'Natural Wood',
 };
 const STYLE_LABELS: Record<DoorStyle, string> = {
-  flat_slab: 'Flat Slab', shaker: 'Shaker', vgroove: 'V-Groove', glass_front: 'Glass Front',
+  wilmington: 'Wilmington', laguna: 'Laguna',
 };
 const HW_LABELS: Record<HardwareFinish, string> = {
   brushed_gold: 'Brushed Gold', matte_black: 'Matte Black', chrome: 'Chrome',
@@ -392,28 +360,19 @@ function WallElevationSVG({
   const renderDoorFace = (x: number, y: number, w: number, h: number) => {
     const im = Math.min(w, h) * 0.1;
     switch (doorStyle) {
-      case 'flat_slab':
-        return <rect x={x} y={y} width={w} height={h} fill={fc.fill} />;
-      case 'shaker':
+      case 'wilmington':
         return (
           <g>
             <rect x={x} y={y} width={w} height={h} fill={fc.fill} />
             <rect x={x+im} y={y+im} width={w-im*2} height={h-im*2} fill={fc.inner} stroke={fc.edge} strokeWidth="0.8" rx="0.5" />
+            <rect x={x+im+1.5} y={y+im+1.5} width={w-im*2-3} height={h-im*2-3} fill="none" stroke={fc.edge} strokeWidth="0.4" opacity="0.4" />
           </g>
         );
-      case 'vgroove':
+      case 'laguna':
         return (
           <g>
             <rect x={x} y={y} width={w} height={h} fill={fc.fill} />
-            <line x1={x+im} y1={y+im} x2={x+w-im} y2={y+h-im} stroke={fc.edge} strokeWidth="0.8" />
-            <line x1={x+w-im} y1={y+im} x2={x+im} y2={y+h-im} stroke={fc.edge} strokeWidth="0.8" />
-          </g>
-        );
-      case 'glass_front':
-        return (
-          <g>
-            <rect x={x} y={y} width={w} height={h} fill={fc.fill} />
-            <rect x={x+im} y={y+im} width={w-im*2} height={h-im*2} fill="#8BAFC8" fillOpacity="0.25" stroke={fc.edge} strokeWidth="0.8" rx="0.5" />
+            <rect x={x+im*0.7} y={y+im*0.7} width={w-im*1.4} height={h-im*1.4} fill={fc.inner} stroke={fc.edge} strokeWidth="0.6" rx="0.5" />
           </g>
         );
     }
@@ -519,7 +478,7 @@ export default function FlushFitDashboard() {
 
   // Cabinet designer state
   const [description, setDescription] = useState('');
-  const [doorStyle, setDoorStyle] = useState<DoorStyle>('shaker');
+  const [doorStyle, setDoorStyle] = useState<DoorStyle>('wilmington');
   const [finish, setFinish] = useState<CabinetFinish>('white');
   const [hardware, setHardware] = useState<HardwareFinish>('matte_black');
   const [loadingStep, setLoadingStep] = useState<'idle' | 'parsing' | 'visualizing'>('idle');
@@ -754,23 +713,27 @@ export default function FlushFitDashboard() {
               <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-500 mb-3">
                 2 · Door style
               </p>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {DOOR_STYLES.map(s => (
                   <button
                     key={s.id}
                     onClick={() => setDoorStyle(s.id)}
-                    className={`flex flex-col items-center gap-2 py-3 px-2 rounded-xl border transition-all ${
+                    className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
                       doorStyle === s.id
                         ? 'border-indigo-500/70 bg-indigo-950/60 shadow-lg shadow-indigo-900/20'
                         : 'border-slate-700/40 bg-slate-900/40 hover:border-slate-600/60'
                     }`}
                   >
                     <DoorIcon style={s.id} selected={doorStyle === s.id} />
-                    <span className={`text-[10px] font-medium leading-tight text-center ${
-                      doorStyle === s.id ? 'text-indigo-300' : 'text-slate-500'
-                    }`}>
-                      {s.name}
-                    </span>
+                    <div className="text-left min-w-0">
+                      <p className={`text-xs font-semibold ${doorStyle === s.id ? 'text-indigo-300' : 'text-slate-400'}`}>
+                        {s.name}
+                      </p>
+                      <p className="text-[9px] text-slate-600 mt-0.5">{s.desc}</p>
+                      <p className={`text-[9px] mt-0.5 font-mono ${doorStyle === s.id ? 'text-indigo-400' : 'text-slate-600'}`}>
+                        {s.price}
+                      </p>
+                    </div>
                   </button>
                 ))}
               </div>

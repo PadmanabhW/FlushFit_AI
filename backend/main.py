@@ -590,17 +590,13 @@ async def parse_design(payload: ParseDesignRequest) -> ParseDesignResponse:
 # ─── Models: /api/generate-visualization ──────────────────────────────────────
 
 class DoorStyle(str, Enum):
-    flat_slab = "flat_slab"
-    shaker = "shaker"
-    vgroove = "vgroove"
-    glass_front = "glass_front"
+    wilmington = "wilmington"
+    laguna     = "laguna"
 
 
 class CabinetFinish(str, Enum):
-    white = "white"
-    navy = "navy"
-    gray = "gray"
-    black = "black"
+    white        = "white"
+    gray         = "gray"
     natural_wood = "natural_wood"
 
 
@@ -627,18 +623,14 @@ class VisualizationResponse(BaseModel):
 # ─── Prompt Builders ───────────────────────────────────────────────────────────
 
 _DOOR_STYLE_PROMPTS: dict[str, str] = {
-    "flat_slab": "flat panel slab doors, ultra-minimalist modern style, no frame detail",
-    "shaker": "shaker style doors with recessed center panel and clean frame rails, classic craftsman",
-    "vgroove": "V-groove chevron panel doors with diagonal routed wood detail",
-    "glass_front": "glass panel insert cabinet doors with thin solid wood frame",
+    "wilmington": "Wilmington classic inset panel doors with 3-inch solid wood stiles and rails, traditional American craftsman style, visible shadow lines around recessed panel",
+    "laguna": "Laguna modern flat inset panel doors with 2.5-inch stiles and rails, sleek minimalist style, clean lines, subtle inset panel detail",
 }
 
 _FINISH_PROMPTS: dict[str, str] = {
-    "white": "crisp bright white painted finish",
-    "navy": "deep navy blue painted finish",
-    "gray": "warm medium gray painted finish",
-    "black": "matte charcoal black painted finish",
-    "natural_wood": "natural oak wood grain, warm honey tones, clear coat finish",
+    "white":        "crisp bright white spray-painted finish, smooth and flawless",
+    "gray":         "warm medium grey spray-painted finish",
+    "natural_wood": "natural wood grain, warm honey tones, clear satin coat finish, beautiful wood texture visible",
 }
 
 _HARDWARE_PROMPTS: dict[str, str] = {
