@@ -107,28 +107,17 @@ function CabinetSVGPreview({
   const h2X = d2X + doorW * 0.25 - handleW / 2;          // right door: left side
 
   const renderDoorFace = (x: number, y: number, w: number, h: number) => {
-    const im = Math.min(w, h) * 0.09;
-    switch (doorStyle) {
-      case 'wilmington':
-        return (
-          <g>
-            <rect x={x} y={y} width={w} height={h} fill={fc.fill} />
-            {/* outer shadow line */}
-            <rect x={x+im} y={y+im} width={w-im*2} height={h-im*2} fill="none" stroke={fc.edge} strokeWidth="0.8" opacity="0.35" rx="1" />
-            {/* recessed inset panel */}
-            <rect x={x+im*1.4} y={y+im*1.4} width={w-im*2.8} height={h-im*2.8} fill={fc.inner} stroke={fc.edge} strokeWidth="1.2" rx="0.8" />
-            {/* inner molding detail */}
-            <rect x={x+im*1.8} y={y+im*1.8} width={w-im*3.6} height={h-im*3.6} fill="none" stroke={fc.edge} strokeWidth="0.5" opacity="0.5" rx="0.5" />
-          </g>
-        );
-      case 'laguna':
-        return (
-          <g>
-            <rect x={x} y={y} width={w} height={h} fill={fc.fill} />
-            <rect x={x+im*0.7} y={y+im*0.7} width={w-im*1.4} height={h-im*1.4} fill={fc.inner} stroke={fc.edge} strokeWidth="0.8" rx="0.5" />
-          </g>
-        );
-    }
+    // Finish overlay: natural wood = transparent (show raw photo),
+    // white/grey = strong tint to simulate spray-painted finish
+    const overlayOpacity = finish === 'natural_wood' ? 0.08 : 0.70;
+    return (
+      <g>
+        <image href={`/doors/${doorStyle}.jpg`} x={x} y={y} width={w} height={h} preserveAspectRatio="xMidYMid slice" />
+        <rect x={x} y={y} width={w} height={h} fill={fc.fill} opacity={overlayOpacity} />
+        {/* door edge outline */}
+        <rect x={x} y={y} width={w} height={h} fill="none" stroke={fc.edge} strokeWidth="0.8" opacity="0.5" />
+      </g>
+    );
   };
 
   return (
@@ -334,22 +323,13 @@ function WallElevationSVG({
   const GAP = 2;
 
   const renderDoorFace = (x: number, y: number, w: number, h: number) => {
-    const im = Math.min(w, h) * 0.1;
     switch (doorStyle) {
-      case 'wilmington':
+      default:
         return (
           <g>
-            <rect x={x} y={y} width={w} height={h} fill={fc.fill} />
-            <rect x={x+im} y={y+im} width={w-im*2} height={h-im*2} fill="none" stroke={fc.edge} strokeWidth="0.6" opacity="0.35" />
-            <rect x={x+im*1.4} y={y+im*1.4} width={w-im*2.8} height={h-im*2.8} fill={fc.inner} stroke={fc.edge} strokeWidth="0.8" rx="0.5" />
-            <rect x={x+im*1.8} y={y+im*1.8} width={w-im*3.6} height={h-im*3.6} fill="none" stroke={fc.edge} strokeWidth="0.3" opacity="0.4" />
-          </g>
-        );
-      case 'laguna':
-        return (
-          <g>
-            <rect x={x} y={y} width={w} height={h} fill={fc.fill} />
-            <rect x={x+im*0.7} y={y+im*0.7} width={w-im*1.4} height={h-im*1.4} fill={fc.inner} stroke={fc.edge} strokeWidth="0.6" rx="0.5" />
+            <image href={`/doors/${doorStyle}.jpg`} x={x} y={y} width={w} height={h} preserveAspectRatio="xMidYMid slice" />
+            <rect x={x} y={y} width={w} height={h} fill={fc.fill} opacity={finish === 'natural_wood' ? 0.08 : 0.70} />
+            <rect x={x} y={y} width={w} height={h} fill="none" stroke={fc.edge} strokeWidth="0.6" opacity="0.5" />
           </g>
         );
     }
