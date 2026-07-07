@@ -113,8 +113,12 @@ function CabinetSVGPreview({
         return (
           <g>
             <rect x={x} y={y} width={w} height={h} fill={fc.fill} />
-            <rect x={x+im} y={y+im} width={w-im*2} height={h-im*2} fill={fc.inner} stroke={fc.edge} strokeWidth="1" rx="1" />
-            <rect x={x+im+2} y={y+im+2} width={w-im*2-4} height={h-im*2-4} fill="none" stroke={fc.edge} strokeWidth="0.5" opacity="0.4" rx="0.5" />
+            {/* outer shadow line */}
+            <rect x={x+im} y={y+im} width={w-im*2} height={h-im*2} fill="none" stroke={fc.edge} strokeWidth="0.8" opacity="0.35" rx="1" />
+            {/* recessed inset panel */}
+            <rect x={x+im*1.4} y={y+im*1.4} width={w-im*2.8} height={h-im*2.8} fill={fc.inner} stroke={fc.edge} strokeWidth="1.2" rx="0.8" />
+            {/* inner molding detail */}
+            <rect x={x+im*1.8} y={y+im*1.8} width={w-im*3.6} height={h-im*3.6} fill="none" stroke={fc.edge} strokeWidth="0.5" opacity="0.5" rx="0.5" />
           </g>
         );
       case 'laguna':
@@ -182,20 +186,24 @@ function DoorIcon({ style, selected }: { style: DoorStyle; selected: boolean }) 
 
   switch (style) {
     case 'wilmington':
-      // Classic inset panel — 3" stiles/rails with visible shadow depth
+      // Wilmington: thick 3" frame, deep inset panel with double-line molding detail
       return (
         <svg viewBox="0 0 40 52" className="w-8 h-10" fill="none">
           <rect x="1" y="1" width="38" height="50" rx="2" fill={bg} stroke={stroke} strokeWidth="1.5" />
-          <rect x="7" y="7" width="26" height="38" rx="1" fill={panel} stroke={stroke} strokeWidth="1" />
-          <rect x="9" y="9" width="22" height="34" rx="0.5" fill="none" stroke={stroke} strokeWidth="0.5" opacity="0.5" />
+          {/* outer shadow line */}
+          <rect x="7" y="7" width="26" height="38" rx="1" fill="none" stroke={stroke} strokeWidth="0.8" opacity="0.4" />
+          {/* inset panel — sits recessed inside the frame */}
+          <rect x="9" y="9" width="22" height="34" rx="0.5" fill={panel} stroke={stroke} strokeWidth="1" />
+          {/* inner molding detail — double line */}
+          <rect x="11" y="11" width="18" height="30" rx="0.3" fill="none" stroke={stroke} strokeWidth="0.5" opacity="0.6" />
         </svg>
       );
     case 'laguna':
-      // Modern flat inset panel — 2.5" stiles/rails, cleaner look
+      // Laguna: thin 2.5" frame, flat inset panel, no molding
       return (
         <svg viewBox="0 0 40 52" className="w-8 h-10" fill="none">
           <rect x="1" y="1" width="38" height="50" rx="2" fill={bg} stroke={stroke} strokeWidth="1.5" />
-          <rect x="6" y="6" width="28" height="40" rx="1" fill={panel} stroke={stroke} strokeWidth="0.8" />
+          <rect x="6" y="6" width="28" height="40" rx="0.5" fill={panel} stroke={stroke} strokeWidth="0.8" />
         </svg>
       );
   }
@@ -364,8 +372,9 @@ function WallElevationSVG({
         return (
           <g>
             <rect x={x} y={y} width={w} height={h} fill={fc.fill} />
-            <rect x={x+im} y={y+im} width={w-im*2} height={h-im*2} fill={fc.inner} stroke={fc.edge} strokeWidth="0.8" rx="0.5" />
-            <rect x={x+im+1.5} y={y+im+1.5} width={w-im*2-3} height={h-im*2-3} fill="none" stroke={fc.edge} strokeWidth="0.4" opacity="0.4" />
+            <rect x={x+im} y={y+im} width={w-im*2} height={h-im*2} fill="none" stroke={fc.edge} strokeWidth="0.6" opacity="0.35" />
+            <rect x={x+im*1.4} y={y+im*1.4} width={w-im*2.8} height={h-im*2.8} fill={fc.inner} stroke={fc.edge} strokeWidth="0.8" rx="0.5" />
+            <rect x={x+im*1.8} y={y+im*1.8} width={w-im*3.6} height={h-im*3.6} fill="none" stroke={fc.edge} strokeWidth="0.3" opacity="0.4" />
           </g>
         );
       case 'laguna':
