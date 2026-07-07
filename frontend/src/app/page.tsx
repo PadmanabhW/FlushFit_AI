@@ -177,38 +177,6 @@ function CabinetSVGPreview({
   );
 }
 
-// ─── Door Style SVG Icons ─────────────────────────────────────────────────────
-
-function DoorIcon({ style, selected }: { style: DoorStyle; selected: boolean }) {
-  const stroke = selected ? '#818CF8' : '#374151';
-  const bg = selected ? '#1e1b4b' : '#111827';
-  const panel = selected ? '#312e81' : '#1f2937';
-
-  switch (style) {
-    case 'wilmington':
-      // Wilmington: thick 3" frame, deep inset panel with double-line molding detail
-      return (
-        <svg viewBox="0 0 40 52" className="w-8 h-10" fill="none">
-          <rect x="1" y="1" width="38" height="50" rx="2" fill={bg} stroke={stroke} strokeWidth="1.5" />
-          {/* outer shadow line */}
-          <rect x="7" y="7" width="26" height="38" rx="1" fill="none" stroke={stroke} strokeWidth="0.8" opacity="0.4" />
-          {/* inset panel — sits recessed inside the frame */}
-          <rect x="9" y="9" width="22" height="34" rx="0.5" fill={panel} stroke={stroke} strokeWidth="1" />
-          {/* inner molding detail — double line */}
-          <rect x="11" y="11" width="18" height="30" rx="0.3" fill="none" stroke={stroke} strokeWidth="0.5" opacity="0.6" />
-        </svg>
-      );
-    case 'laguna':
-      // Laguna: thin 2.5" frame, flat inset panel, no molding
-      return (
-        <svg viewBox="0 0 40 52" className="w-8 h-10" fill="none">
-          <rect x="1" y="1" width="38" height="50" rx="2" fill={bg} stroke={stroke} strokeWidth="1.5" />
-          <rect x="6" y="6" width="28" height="40" rx="0.5" fill={panel} stroke={stroke} strokeWidth="0.8" />
-        </svg>
-      );
-  }
-}
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function extractApiError(errData: unknown, status: number): string {
@@ -727,19 +695,27 @@ export default function FlushFitDashboard() {
                   <button
                     key={s.id}
                     onClick={() => setDoorStyle(s.id)}
-                    className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                    className={`flex flex-col rounded-xl border overflow-hidden transition-all ${
                       doorStyle === s.id
-                        ? 'border-indigo-500/70 bg-indigo-950/60 shadow-lg shadow-indigo-900/20'
-                        : 'border-slate-700/40 bg-slate-900/40 hover:border-slate-600/60'
+                        ? 'border-indigo-500/70 shadow-lg shadow-indigo-900/20'
+                        : 'border-slate-700/40 hover:border-slate-600/60'
                     }`}
                   >
-                    <DoorIcon style={s.id} selected={doorStyle === s.id} />
-                    <div className="text-left min-w-0">
+                    {/* Real product photo */}
+                    <div className="w-full aspect-[3/4] bg-slate-900 overflow-hidden">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={`/doors/${s.id}.jpg`}
+                        alt={s.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    {/* Label */}
+                    <div className={`px-2.5 py-2 text-left ${doorStyle === s.id ? 'bg-indigo-950/60' : 'bg-slate-900/60'}`}>
                       <p className={`text-xs font-semibold ${doorStyle === s.id ? 'text-indigo-300' : 'text-slate-400'}`}>
                         {s.name}
                       </p>
-                      <p className="text-[9px] text-slate-600 mt-0.5">{s.desc}</p>
-                      <p className={`text-[9px] mt-0.5 font-mono ${doorStyle === s.id ? 'text-indigo-400' : 'text-slate-600'}`}>
+                      <p className={`text-[9px] font-mono mt-0.5 ${doorStyle === s.id ? 'text-indigo-400' : 'text-slate-600'}`}>
                         {s.price}
                       </p>
                     </div>
